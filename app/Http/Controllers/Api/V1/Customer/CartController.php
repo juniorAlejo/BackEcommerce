@@ -20,7 +20,7 @@ class CartController extends Controller
     public function index(Request $request): JsonResponse
     {
         $cart = $this->getOrCreateCart($request);
-        $cart->load(['items.product.images', 'items.variant']);
+        $cart->load(['items.product.images' => fn($q) => $q->where('position', 0), 'items.variant']);
 
         return response()->json([
             'data' => [
@@ -65,7 +65,7 @@ class CartController extends Controller
         ]
     );
 
-    $cart->load(['items.product.images', 'items.product.brand', 'items.variant']);
+    $cart->load(['items.product.images' => fn($q) => $q->where('position', 0), 'items.product.brand', 'items.variant']);
 
     return response()->json([
         'data' => [
@@ -81,7 +81,7 @@ class CartController extends Controller
     {
         $data = $request->validate(['quantity' => 'required|integer|min:1|max:99']);
         $item->update($data);
-        $cart = $item->cart->load(['items.product.images', 'items.variant']);
+        $cart = $item->cart->load(['items.product.images' => fn($q) => $q->where('position', 0), 'items.variant']);
 
         return response()->json([
             'data' => ['id' => $cart->id, 'items' => $cart->items, 'total' => $cart->total],
@@ -92,7 +92,7 @@ class CartController extends Controller
     {
         $cart = $item->cart;
         $item->delete();
-        $cart->load(['items.product.images', 'items.variant']);
+        $cart->load(['items.product.images' => fn($q) => $q->where('position', 0), 'items.variant']);
 
         return response()->json([
             'data'    => ['id' => $cart->id, 'items' => $cart->items, 'total' => $cart->total],

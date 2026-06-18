@@ -25,6 +25,7 @@ class BrandController extends Controller
 
         $data['slug'] = Str::slug($data['name']);
         $brand = Brand::create($data);
+        CacheKeys::flushCategories();
 
         return response()->json(['data' => $brand, 'message' => 'Marca creada.'], 201);
     }
@@ -42,6 +43,7 @@ class BrandController extends Controller
         }
 
         $brand->update($data);
+        CacheKeys::flushCategories();
 
         return response()->json(['data' => $brand, 'message' => 'Marca actualizada.']);
     }
@@ -50,5 +52,6 @@ class BrandController extends Controller
     {
         $brand->delete();
         return response()->json(['message' => 'Marca eliminada.']);
+        CacheKeys::flushCategories();
     }
 }

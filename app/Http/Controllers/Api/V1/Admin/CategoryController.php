@@ -27,6 +27,7 @@ class CategoryController extends Controller
         $data['slug'] = Str::slug($data['name']);
 
         $category = Category::create($data);
+        CacheKeys::flushCategories();
 
         return response()->json(['data' => $category, 'message' => 'Categoría creada.'], 201);
     }
@@ -46,6 +47,7 @@ class CategoryController extends Controller
         }
 
         $category->update($data);
+        CacheKeys::flushCategories();
 
         return response()->json(['data' => $category, 'message' => 'Categoría actualizada.']);
     }
@@ -54,5 +56,7 @@ class CategoryController extends Controller
     {
         $category->delete();
         return response()->json(['message' => 'Categoría eliminada.']);
+
+        CacheKeys::flushCategories();
     }
 }

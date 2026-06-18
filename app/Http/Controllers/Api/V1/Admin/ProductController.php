@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Models\ProductVariant;
 use App\Services\ImageProcessor;
+use App\Services\CacheKeys;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -47,19 +49,31 @@ class ProductController extends Controller
             'is_featured' => 'sometimes|boolean',
         ]);
 
-        $data['is_active']   = $data['is_active']   ?? true;
+        $data['is_active']   = $data['is_active'] ?? true;
         $data['is_featured'] = $data['is_featured'] ?? false;
         $data['slug']        = Str::slug($data['name']) . '-' . Str::lower(Str::random(5));
 
         $product = Product::create($data);
 
-        return response()->json(['data' => $product], 201);
+        CacheKeys::flushProducts();
+
+        return response()->json([
+            'data' => $product
+        ], 201);
     }
 
     public function show(Product $product): JsonResponse
     {
-        $product->load(['category.parent', 'brand', 'images', 'variants']);
-        return response()->json(['data' => $product]);
+        $product->load([
+            'category.parent',
+            'brand',
+            'images',
+            'variants'
+        ]);
+
+        return response()->json([
+            'data' => $product
+        ]);
     }
 
     public function update(Request $request, Product $product): JsonResponse
@@ -79,7 +93,11 @@ class ProductController extends Controller
 
         $product->update($data);
 
-        return response()->json(['data' => $product]);
+        CacheKeys::flushProducts();
+
+        return response()->json([
+            'data' => $product
+        ]);
     }
 
     public function destroy(Product $product): JsonResponse
@@ -93,13 +111,26 @@ class ProductController extends Controller
         $product->variants()->delete();
         $product->delete();
 
-        return response()->json(['message' => 'Producto eliminado.']);
+        CacheKeys::flushProducts();
+
+        return response()->json([
+            'message' => 'Producto eliminado.'
+        ]);
     }
 
     public function toggleFeatured(Product $product): JsonResponse
     {
-        $product->update(['is_featured' => !$product->is_featured]);
-        return response()->json(['data' => ['is_featured' => $product->is_featured]]);
+        $product->update([
+            'is_featured' => !$product->is_featured
+        ]);
+
+        CacheKeys::flushProducts();
+
+        return response()->json([
+            'data' => [
+                'is_featured' => $product->is_featured
+            ]
+        ]);
     }
 
     /**
@@ -112,14 +143,18 @@ class ProductController extends Controller
         ]);
 
         if (!$request->hasFile('images')) {
-            return response()->json(['message' => 'No se encontraron imágenes.'], 422);
+            return response()->json([
+                'message' => 'No se encontraron imágenes.'
+            ], 422);
         }
 
         $images = [];
         $currentPosition = $product->images()->max('position') ?? -1;
 
         try {
+
             foreach ($request->file('images', []) as $file) {
+
                 $path = ImageProcessor::processAndStore($file, 'products');
 
                 $images[] = $product->images()->create([
@@ -127,15 +162,23 @@ class ProductController extends Controller
                     'position' => ++$currentPosition,
                 ]);
             }
+
+            CacheKeys::flushProducts();
+
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Error al procesar imágenes: ' . $e->getMessage()], 500);
+
+            return response()->json([
+                'message' => 'Error al procesar imágenes: ' . $e->getMessage()
+            ], 500);
         }
 
-        return response()->json(['data' => $images], 201);
+        return response()->json([
+            'data' => $images
+        ], 201);
     }
 
     /**
-     * Reemplazar el archivo de una imagen existente, manteniendo su posición.
+     * Reemplazar una imagen existente.
      */
     public function replaceImage(Request $request, Product $product, ProductImage $image): JsonResponse
     {
@@ -144,18 +187,32 @@ class ProductController extends Controller
         ]);
 
         try {
-            // Eliminar archivo anterior del disco
+
             $oldPath = str_replace(asset('storage/') . '/', '', $image->url);
+
             Storage::disk('public')->delete($oldPath);
 
-            // Procesar y guardar la nueva imagen
-            $newPath = ImageProcessor::processAndStore($request->file('image'), 'products');
-            $image->update(['url' => asset("storage/{$newPath}")]);
+            $newPath = ImageProcessor::processAndStore(
+                $request->file('image'),
+                'products'
+            );
+
+            $image->update([
+                'url' => asset("storage/{$newPath}")
+            ]);
+
+            CacheKeys::flushProducts();
+
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Error al reemplazar imagen: ' . $e->getMessage()], 500);
+
+            return response()->json([
+                'message' => 'Error al reemplazar imagen: ' . $e->getMessage()
+            ], 500);
         }
 
-        return response()->json(['data' => $image->fresh()]);
+        return response()->json([
+            'data' => $image->fresh()
+        ]);
     }
 
     /**
@@ -164,11 +221,16 @@ class ProductController extends Controller
     public function destroyImage(Product $product, ProductImage $image): JsonResponse
     {
         $path = str_replace(asset('storage/') . '/', '', $image->url);
+
         Storage::disk('public')->delete($path);
 
         $image->delete();
 
-        return response()->json(['message' => 'Imagen eliminada.']);
+        CacheKeys::flushProducts();
+
+        return response()->json([
+            'message' => 'Imagen eliminada.'
+        ]);
     }
 
     public function storeVariant(Request $request, Product $product): JsonResponse
@@ -181,13 +243,24 @@ class ProductController extends Controller
             'stock'      => 'required|integer|min:0',
         ]);
 
-        $variant = $product->variants()->create([...$data, 'is_active' => true]);
+        $variant = $product->variants()->create([
+            ...$data,
+            'is_active' => true
+        ]);
 
-        return response()->json(['data' => $variant], 201);
+        CacheKeys::flushProducts();
+
+        return response()->json([
+            'data' => $variant
+        ], 201);
     }
 
-    public function updateVariant(Request $request, Product $product, \App\Models\ProductVariant $variant): JsonResponse
-    {
+    public function updateVariant(
+        Request $request,
+        Product $product,
+        ProductVariant $variant
+    ): JsonResponse {
+
         $data = $request->validate([
             'name'       => 'sometimes|string',
             'price'      => 'sometimes|numeric|min:0',
@@ -198,46 +271,73 @@ class ProductController extends Controller
 
         $variant->update($data);
 
-        return response()->json(['data' => $variant]);
+        CacheKeys::flushProducts();
+
+        return response()->json([
+            'data' => $variant
+        ]);
     }
 
-    public function destroyVariant(Product $product, \App\Models\ProductVariant $variant): JsonResponse
-    {
+    public function destroyVariant(
+        Product $product,
+        ProductVariant $variant
+    ): JsonResponse {
+
         $variant->delete();
 
-        return response()->json(['message' => 'Variante eliminada.']);
+        CacheKeys::flushProducts();
+
+        return response()->json([
+            'message' => 'Variante eliminada.'
+        ]);
     }
 
     public function brandsByCategory(Request $request): JsonResponse
     {
         $categorySlug = $request->get('category', '');
-        $categoryIds  = collect();
+
+        $categoryIds = collect();
 
         if ($categorySlug) {
+
             $categoryIds = \App\Models\Category::where('slug', $categorySlug)
-                ->orWhereHas('parent', fn($p) => $p->where('slug', $categorySlug))
+                ->orWhereHas(
+                    'parent',
+                    fn($p) => $p->where('slug', $categorySlug)
+                )
                 ->pluck('id');
         }
 
         $brands = \App\Models\Brand::where('is_active', true)
             ->whereHas('products', function ($q) use ($categoryIds) {
+
                 $q->where('is_active', true);
+
                 if ($categoryIds->isNotEmpty()) {
                     $q->whereIn('category_id', $categoryIds);
                 }
+
             })
             ->get()
             ->map(function ($brand) use ($categoryIds) {
+
                 $count = $brand->products()
                     ->where('is_active', true)
-                    ->when($categoryIds->isNotEmpty(), fn($q) => $q->whereIn('category_id', $categoryIds))
+                    ->when(
+                        $categoryIds->isNotEmpty(),
+                        fn($q) => $q->whereIn('category_id', $categoryIds)
+                    )
                     ->count();
+
                 $brand->product_count = $count;
+
                 return $brand;
             })
             ->sortBy('name')
             ->values();
 
-        return response()->json(['data' => $brands]);
+        return response()->json([
+            'data' => $brands
+        ]);
     }
 }

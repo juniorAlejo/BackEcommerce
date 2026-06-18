@@ -18,14 +18,19 @@ class AddressController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'label'          => 'required|string|max:50',
-            'recipient_name' => 'required|string|max:120',
-            'phone'          => 'required|string|max:20',
-            'address_line'   => 'required|string|max:255',
-            'district'       => 'required|string|max:120',
-            'city'           => 'required|string|max:120',
-            'reference'      => 'nullable|string|max:255',
-            'is_default'     => 'sometimes|boolean',
+            'label'              => 'required|string|max:50',
+            'recipient_name'     => 'required|string|max:120',
+            'phone'              => 'required|string|max:30',
+            'address_line'       => 'required|string|max:255',
+            'district'           => 'required|string|max:120',
+            'city'               => 'required|string|max:120',
+            'province'           => 'required|string|max:120',
+            'zip_code'           => 'required|string|size:5',
+            'customs_id'         => 'required|string|max:20',
+            'customs_first_name' => 'required|string|max:100',
+            'customs_last_name'  => 'required|string|max:100',
+            'reference'          => 'nullable|string|max:255',
+            'is_default'         => 'sometimes|boolean',
         ]);
 
         $user = $request->user();
@@ -45,14 +50,19 @@ class AddressController extends Controller
         $this->authorizeOwnership($request, $address);
 
         $data = $request->validate([
-            'label'          => 'sometimes|string|max:50',
-            'recipient_name' => 'sometimes|string|max:120',
-            'phone'          => 'sometimes|string|max:20',
-            'address_line'   => 'sometimes|string|max:255',
-            'district'       => 'sometimes|string|max:120',
-            'city'           => 'sometimes|string|max:120',
-            'reference'      => 'nullable|string|max:255',
-            'is_default'     => 'sometimes|boolean',
+            'label'              => 'sometimes|string|max:50',
+            'recipient_name'     => 'sometimes|string|max:120',
+            'phone'              => 'sometimes|string|max:30',
+            'address_line'       => 'sometimes|string|max:255',
+            'district'           => 'sometimes|string|max:120',
+            'city'               => 'sometimes|string|max:120',
+            'province'           => 'sometimes|string|max:120',
+            'zip_code'           => 'sometimes|string|size:5',
+            'customs_id'         => 'sometimes|string|max:20',
+            'customs_first_name' => 'sometimes|string|max:100',
+            'customs_last_name'  => 'sometimes|string|max:100',
+            'reference'          => 'nullable|string|max:255',
+            'is_default'         => 'sometimes|boolean',
         ]);
 
         if (!empty($data['is_default'])) {
